@@ -14,13 +14,8 @@ export default async function AlumnosPage() {
   })
   const alumnoIds = asignaciones.map(a => a.alumnoId)
 
-  // Si es ADMIN_GYM, ver todos los alumnos del gym
-  const whereClause = session.user.rol === 'ADMIN_GYM'
-    ? { gymId: session.user.gymId, rol: 'ALUMNO' as const }
-    : { id: { in: alumnoIds }, rol: 'ALUMNO' as const }
-
   const alumnos = await prisma.user.findMany({
-    where: whereClause,
+    where: { id: { in: alumnoIds }, rol: 'ALUMNO' as const },
     select: {
       id: true,
       nombre: true,
