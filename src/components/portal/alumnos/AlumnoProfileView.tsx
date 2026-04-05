@@ -36,9 +36,10 @@ type Props = {
   showCreateButtons?: boolean
   createBasePath?: string
   asignacionSlot?: ReactNode
+  historialSlot?: ReactNode
 }
 
-export default function AlumnoProfileView({ data, basePath, alumnoId, showCreateButtons = true, createBasePath, asignacionSlot }: Props) {
+export default function AlumnoProfileView({ data, basePath, alumnoId, showCreateButtons = true, createBasePath, asignacionSlot, historialSlot }: Props) {
   const effectiveCreateBasePath = createBasePath ?? basePath
   const { alumno, rutinaActiva, planActivo, progresos } = data
 
@@ -464,6 +465,13 @@ export default function AlumnoProfileView({ data, basePath, alumnoId, showCreate
           </div>
         </div>
       </div>
+
+      {/* Historial slot — only rendered when passed (entrenador/admin views) */}
+      {historialSlot && (
+        <div className="space-y-4">
+          {historialSlot}
+        </div>
+      )}
     </div>
   )
 }

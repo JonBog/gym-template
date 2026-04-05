@@ -4,6 +4,9 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 
+// Re-export reactivar actions so admin detail pages can import from ../../actions
+export { reactivarRutina, reactivarPlan } from '@/app/entrenador/alumnos/[alumnoId]/actions'
+
 async function requireAdmin() {
   const session = await auth()
   if (!session?.user) throw new Error('No autenticado')

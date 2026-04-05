@@ -40,14 +40,35 @@ const planActivoSelect = {
   entrenadorId: true,
 } satisfies Prisma.PlanNutricionalSelect
 
+const rutinaAnteriorSelect = {
+  id: true,
+  nombre: true,
+  vigenciaDesde: true,
+  vigenciaHasta: true,
+  createdAt: true,
+  _count: { select: { dias: true } },
+} satisfies Prisma.RutinaSelect
+
+const planAnteriorSelect = {
+  id: true,
+  nombre: true,
+  vigenciaDesde: true,
+  vigenciaHasta: true,
+  createdAt: true,
+} satisfies Prisma.PlanNutricionalSelect
+
 type PlanActivo = Prisma.PlanNutricionalGetPayload<{ select: typeof planActivoSelect }> | null
 type ProgresoRow = Prisma.ProgresoGetPayload<Record<string, never>>
+export type RutinaAnterior = Prisma.RutinaGetPayload<{ select: typeof rutinaAnteriorSelect }>
+export type PlanAnterior = Prisma.PlanNutricionalGetPayload<{ select: typeof planAnteriorSelect }>
 
 export type AlumnoData = {
   alumno: AlumnoRow
   rutinaActiva: RutinaActiva
   planActivo: PlanActivo
   progresos: ProgresoRow[]
+  rutinasAnteriores: RutinaAnterior[]
+  planesAnteriores: PlanAnterior[]
 }
 
 export async function getAlumnoData(alumnoId: string): Promise<AlumnoData | null> {
@@ -58,23 +79,36 @@ export async function getAlumnoData(alumnoId: string): Promise<AlumnoData | null
 
   if (!alumno) return null
 
-  const rutinaActiva = await prisma.rutina.findFirst({
-    where: { alumnoId, activa: true },
-    orderBy: { createdAt: 'desc' },
-    include: rutinaInclude,
-  })
+  const [rutinaActiva, planActivo, progresos, rutinasAnteriores, planesAnteriores] =
+    await Promise.all([
+      prisma.rutina.findFirst({
+        where: { alumnoId, activa: true },
+        orderBy: { createdAt: 'desc' },
+        include: rutinaInclude,
+      }),
+      prisma.planNutricional.findFirst({
+        where: { alumnoId, activo: true },
+        orderBy: { createdAt: 'desc' },
+        select: planActivoSelect,
+      }),
+      prisma.progreso.findMany({
+        where: { alumnoId },
+        orderBy: { fecha: 'desc' },
+        take: 6,
+      }),
+      prisma.rutina.findMany({
+        where: { alumnoId, activa: false },
+        orderBy: { createdAt: 'desc' },
+        select: rutinaAnteriorSelect,
+        take: 10,
+      }),
+      prisma.planNutricional.findMany({
+        where: { alumnoId, activo: false },
+        orderBy: { createdAt: 'desc' },
+        select: planAnteriorSelect,
+        take: 10,
+      }),
+    ])
 
-  const planActivo = await prisma.planNutricional.findFirst({
-    where: { alumnoId, activo: true },
-    orderBy: { createdAt: 'desc' },
-    select: planActivoSelect,
-  })
-
-  const progresos = await prisma.progreso.findMany({
-    where: { alumnoId },
-    orderBy: { fecha: 'desc' },
-    take: 6,
-  })
-
-  return { alumno, rutinaActiva, planActivo, progresos }
+  return { alumno, rutinaActiva, planActivo, progresos, rutinasAnteriores, planesAnteriores }
 }

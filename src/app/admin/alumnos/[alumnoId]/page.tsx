@@ -4,6 +4,9 @@ import { prisma } from '@/lib/prisma'
 import { getAlumnoData } from '@/lib/queries/alumno'
 import AlumnoProfileView from '@/components/portal/alumnos/AlumnoProfileView'
 import AsignacionEntrenador from '@/components/portal/alumnos/AsignacionEntrenador'
+import HistorialRutinas from '@/components/portal/alumnos/HistorialRutinas'
+import HistorialPlanes from '@/components/portal/alumnos/HistorialPlanes'
+import { reactivarRutina, reactivarPlan } from '@/app/entrenador/alumnos/[alumnoId]/actions'
 
 type Props = {
   params: Promise<{ alumnoId: string }>
@@ -65,6 +68,22 @@ export default async function AdminAlumnoProfilePage({ params }: Props) {
           entrenadores={entrenadores}
           currentUserId={session.user.id}
         />
+      }
+      historialSlot={
+        <>
+          <HistorialRutinas
+            rutinas={data.rutinasAnteriores}
+            alumnoId={alumnoId}
+            basePath="/admin/alumnos"
+            reactivarAction={isAssignedTrainer ? reactivarRutina : undefined}
+          />
+          <HistorialPlanes
+            planes={data.planesAnteriores}
+            alumnoId={alumnoId}
+            basePath="/admin/alumnos"
+            reactivarAction={isAssignedTrainer ? reactivarPlan : undefined}
+          />
+        </>
       }
     />
   )
