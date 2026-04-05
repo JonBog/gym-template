@@ -12,9 +12,87 @@ type Alumno = {
   rutina: string
   ultimaSesion: string
   entrenador: string | null
+  esMio: boolean
 }
 
 type Filtro = 'todos' | 'activos' | 'inactivos' | 'sin-asignar'
+
+function AlumnoCard({ alumno: al, highlight }: { alumno: Alumno; highlight?: boolean }) {
+  return (
+    <div
+      className="rounded-2xl p-5 flex flex-col gap-4"
+      style={{
+        background: 'var(--gym-surface)',
+        border: highlight
+          ? '1px solid rgba(255,170,25,0.25)'
+          : '1px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      {/* Avatar + info */}
+      <div className="flex items-start gap-3">
+        <div
+          className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold flex-shrink-0"
+          style={{ background: 'var(--gym-surface-alt)', color: 'var(--primary)', fontFamily: 'var(--font-heading)' }}
+        >
+          {al.nombre[0]}{al.apellido[0]}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold truncate" style={{ color: '#ffffff' }}>
+            {al.nombre} {al.apellido}
+          </p>
+          <p className="text-xs truncate" style={{ color: 'var(--gym-muted)' }}>{al.email}</p>
+        </div>
+        <span
+          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.6rem] font-bold uppercase flex-shrink-0"
+          style={{
+            background: al.activo ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+            color: al.activo ? '#22c55e' : '#ef4444',
+          }}
+        >
+          {al.activo ? 'Activo' : 'Inactivo'}
+        </span>
+      </div>
+
+      {/* Entrenador asignado */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--gym-muted)', flexShrink: 0 }}>
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+          </svg>
+          {al.entrenador ? (
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              {al.entrenador}
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center rounded-full px-2 py-0.5 text-[0.6rem] font-bold uppercase"
+              style={{
+                background: 'rgba(251,191,36,0.12)',
+                color: '#fbbf24',
+              }}
+            >
+              Sin asignar
+            </span>
+          )}
+        </div>
+        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{al.rutina}</p>
+        <p className="text-[0.65rem]" style={{ color: 'var(--gym-muted)' }}>
+          Ultima sesion: {al.ultimaSesion}
+        </p>
+      </div>
+
+      {/* Ver perfil */}
+      <Link
+        href={`/admin/alumnos/${al.id}`}
+        className="w-full flex items-center justify-center rounded-xl px-4 py-2.5 text-xs font-bold transition-colors"
+        style={{ background: 'var(--gym-surface-alt)', color: '#ffffff' }}
+      >
+        Ver perfil
+      </Link>
+    </div>
+  )
+}
 
 export default function AdminAlumnosGrid({ alumnos }: { alumnos: Alumno[] }) {
   const [filtro, setFiltro] = useState<Filtro>('todos')
@@ -111,78 +189,55 @@ export default function AdminAlumnosGrid({ alumnos }: { alumnos: Alumno[] }) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtrados.map((al) => (
-            <div
-              key={al.id}
-              className="rounded-2xl p-5 flex flex-col gap-4"
-              style={{ background: 'var(--gym-surface)', border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              {/* Avatar + info */}
-              <div className="flex items-start gap-3">
-                <div
-                  className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold flex-shrink-0"
-                  style={{ background: 'var(--gym-surface-alt)', color: 'var(--primary)', fontFamily: 'var(--font-heading)' }}
+        <>
+          {/* Mis Alumnos */}
+          {filtrados.some((al) => al.esMio) && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary)' }}>
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                <h3
+                  className="text-lg font-bold"
+                  style={{ fontFamily: 'var(--font-heading)', color: 'var(--primary)' }}
                 >
-                  {al.nombre[0]}{al.apellido[0]}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold truncate" style={{ color: '#ffffff' }}>
-                    {al.nombre} {al.apellido}
-                  </p>
-                  <p className="text-xs truncate" style={{ color: 'var(--gym-muted)' }}>{al.email}</p>
-                </div>
-                <span
-                  className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.6rem] font-bold uppercase flex-shrink-0"
-                  style={{
-                    background: al.activo ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
-                    color: al.activo ? '#22c55e' : '#ef4444',
-                  }}
-                >
-                  {al.activo ? 'Activo' : 'Inactivo'}
+                  Mis Alumnos
+                </h3>
+                <span className="text-xs" style={{ color: 'var(--gym-muted)' }}>
+                  {filtrados.filter((al) => al.esMio).length}
                 </span>
               </div>
-
-              {/* Entrenador asignado */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--gym-muted)', flexShrink: 0 }}>
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                  </svg>
-                  {al.entrenador ? (
-                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                      {al.entrenador}
-                    </span>
-                  ) : (
-                    <span
-                      className="inline-flex items-center rounded-full px-2 py-0.5 text-[0.6rem] font-bold uppercase"
-                      style={{
-                        background: 'rgba(251,191,36,0.12)',
-                        color: '#fbbf24',
-                      }}
-                    >
-                      Sin asignar
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{al.rutina}</p>
-                <p className="text-[0.65rem]" style={{ color: 'var(--gym-muted)' }}>
-                  Ultima sesion: {al.ultimaSesion}
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filtrados.filter((al) => al.esMio).map((al) => (
+                  <AlumnoCard key={al.id} alumno={al} highlight />
+                ))}
               </div>
-
-              {/* Ver perfil */}
-              <Link
-                href={`/admin/alumnos/${al.id}`}
-                className="w-full flex items-center justify-center rounded-xl px-4 py-2.5 text-xs font-bold transition-colors"
-                style={{ background: 'var(--gym-surface-alt)', color: '#ffffff' }}
-              >
-                Ver perfil
-              </Link>
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* Divisor */}
+          {filtrados.some((al) => al.esMio) && filtrados.some((al) => !al.esMio) && (
+            <div className="flex items-center gap-4 py-2">
+              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--gym-muted)' }}>
+                Todos los alumnos
+              </span>
+              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+            </div>
+          )}
+
+          {/* Todos los Alumnos (excluyendo los míos) */}
+          {filtrados.some((al) => !al.esMio) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filtrados.filter((al) => !al.esMio).map((al) => (
+                <AlumnoCard key={al.id} alumno={al} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )

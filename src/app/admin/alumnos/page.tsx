@@ -10,38 +10,46 @@ export default async function AdminAlumnosPage() {
 
   const gymId = session.user.gymId
 
-  const alumnos = await prisma.user.findMany({
-    where: { gymId, rol: 'ALUMNO' },
-    select: {
-      id: true,
-      nombre: true,
-      apellido: true,
-      email: true,
-      activo: true,
-      createdAt: true,
-      rutinas: {
-        where: { activa: true },
-        select: { nombre: true },
-        take: 1,
-        orderBy: { createdAt: 'desc' },
-      },
-      completados: {
-        select: { fecha: true },
-        take: 1,
-        orderBy: { fecha: 'desc' },
-      },
-      alumnoAsignado: {
-        where: { activa: true },
-        select: {
-          entrenador: {
-            select: { nombre: true, apellido: true },
-          },
+  const [alumnos, misAsignaciones] = await Promise.all([
+    prisma.user.findMany({
+      where: { gymId, rol: 'ALUMNO' },
+      select: {
+        id: true,
+        nombre: true,
+        apellido: true,
+        email: true,
+        activo: true,
+        createdAt: true,
+        rutinas: {
+          where: { activa: true },
+          select: { nombre: true },
+          take: 1,
+          orderBy: { createdAt: 'desc' },
         },
-        take: 1,
+        completados: {
+          select: { fecha: true },
+          take: 1,
+          orderBy: { fecha: 'desc' },
+        },
+        alumnoAsignado: {
+          where: { activa: true },
+          select: {
+            entrenador: {
+              select: { nombre: true, apellido: true },
+            },
+          },
+          take: 1,
+        },
       },
-    },
-    orderBy: { nombre: 'asc' },
-  })
+      orderBy: { nombre: 'asc' },
+    }),
+    prisma.asignacionAlumno.findMany({
+      where: { entrenadorId: session.user.id, activa: true },
+      select: { alumnoId: true },
+    }),
+  ])
+
+  const misAlumnoIds = new Set(misAsignaciones.map((a) => a.alumnoId))
 
   const alumnosData = alumnos.map((al) => ({
     id: al.id,
@@ -56,6 +64,7 @@ export default async function AdminAlumnosPage() {
     entrenador: al.alumnoAsignado[0]
       ? `${al.alumnoAsignado[0].entrenador.nombre} ${al.alumnoAsignado[0].entrenador.apellido}`
       : null,
+    esMio: misAlumnoIds.has(al.id),
   }))
 
   return <AdminAlumnosGrid alumnos={alumnosData} />

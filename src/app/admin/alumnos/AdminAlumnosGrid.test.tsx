@@ -18,6 +18,7 @@ const mockAlumnos = [
     rutina: 'Fuerza 4 días',
     ultimaSesion: 'Hace 2 días',
     entrenador: 'Marcos López',
+    esMio: false,
   },
   {
     id: 'a2',
@@ -28,6 +29,7 @@ const mockAlumnos = [
     rutina: 'Sin rutina',
     ultimaSesion: 'Hace 1 mes',
     entrenador: 'Marcos López',
+    esMio: false,
   },
   {
     id: 'a3',
@@ -38,6 +40,7 @@ const mockAlumnos = [
     rutina: 'Cardio 3 días',
     ultimaSesion: 'Hoy',
     entrenador: null,
+    esMio: false,
   },
 ]
 
@@ -200,6 +203,23 @@ describe('AdminAlumnosGrid', () => {
     expect(hrefs).toContain('/admin/alumnos/a1')
     expect(hrefs).toContain('/admin/alumnos/a2')
     expect(hrefs).toContain('/admin/alumnos/a3')
+  })
+
+  it('shows Mis Alumnos section when admin has assigned students', () => {
+    const alumnosConMios = [
+      { ...mockAlumnos[0], esMio: true },
+      ...mockAlumnos.slice(1),
+    ]
+    render(<AdminAlumnosGrid alumnos={alumnosConMios} />)
+
+    expect(screen.getByText('Mis Alumnos')).toBeInTheDocument()
+    expect(screen.getByText('Todos los alumnos')).toBeInTheDocument()
+  })
+
+  it('does not show Mis Alumnos section when admin has no assigned students', () => {
+    render(<AdminAlumnosGrid alumnos={mockAlumnos} />)
+
+    expect(screen.queryByText('Mis Alumnos')).not.toBeInTheDocument()
   })
 
   it('resets to all students when Todos filter is clicked after another filter', async () => {
