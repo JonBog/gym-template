@@ -27,6 +27,49 @@ type DiaForm = {
   comidas: ComidaForm[]
 }
 
+export type PlanInitialData = {
+  id: string
+  nombre: string
+  descripcion: string
+  vigenciaDesde: string // ISO YYYY-MM-DD
+  vigenciaHasta: string
+  objetivo: string
+  kcalObjetivo?: number | null
+  proteinaG?: number | null
+  carbosG?: number | null
+  grasaG?: number | null
+  dias: {
+    dia: string
+    comidas: {
+      nombre: string
+      hora: string
+      orden: number
+      alimentos: {
+        nombre: string
+        cantidad: string
+        calorias: number | null
+        proteinas: number | null
+        carbohidratos: number | null
+        grasas: number | null
+        orden: number
+      }[]
+    }[]
+  }[]
+}
+
+export type ActualizarPlanInput = {
+  planId: string
+  nombre: string
+  objetivo: string
+  kcalObjetivo: number | null
+  proteinaG: number | null
+  carbosG: number | null
+  grasaG: number | null
+  vigenciaDesde: string
+  vigenciaHasta: string
+  dias: PlanInput['dias']
+}
+
 const DIAS = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'] as const
 const DIAS_FULL = [
   'Lunes',
@@ -77,6 +120,37 @@ function crearDiaInicial(): DiaForm {
   }
 }
 
+function buildDiasFromInitial(initialData: PlanInitialData): DiaForm[] {
+  return DIAS_ENUM.map((diaEnum) => {
+    const diaData = initialData.dias.find((d) => d.dia === diaEnum)
+    if (!diaData) return crearDiaInicial()
+    return {
+      activo: true,
+      comidas: diaData.comidas
+        .slice()
+        .sort((a, b) => a.orden - b.orden)
+        .map((comida) => ({
+          id: crypto.randomUUID(),
+          nombre: comida.nombre,
+          hora: comida.hora ?? '',
+          alimentos: comida.alimentos
+            .slice()
+            .sort((a, b) => a.orden - b.orden)
+            .map((al) => ({
+              id: crypto.randomUUID(),
+              nombre: al.nombre,
+              cantidad: al.cantidad ?? '',
+              unidad: 'g',
+              kcal: al.calorias != null ? String(al.calorias) : '',
+              proteina: al.proteinas != null ? String(al.proteinas) : '',
+              carbos: al.carbohidratos != null ? String(al.carbohidratos) : '',
+              grasa: al.grasas != null ? String(al.grasas) : '',
+            })),
+        })),
+    }
+  })
+}
+
 const inputStyle = {
   background: 'var(--gym-surface-alt)',
   color: '#ffffff',
@@ -94,6 +168,8 @@ type Props = {
   alumnoNombre: string
   basePath: string
   crearPlanAction: (input: PlanInput) => Promise<void>
+  initialData?: PlanInitialData
+  actualizarPlanAction?: (input: ActualizarPlanInput) => Promise<void>
 }
 
 export default function NutricionBuilderView({
@@ -101,17 +177,31 @@ export default function NutricionBuilderView({
   alumnoNombre,
   basePath,
   crearPlanAction,
+  initialData,
+  actualizarPlanAction,
 }: Props) {
-  const [nombre, setNombre] = useState('')
-  const [objetivo, setObjetivo] = useState('')
-  const [kcal, setKcal] = useState('')
-  const [proteina, setProteina] = useState('')
-  const [carbos, setCarbos] = useState('')
-  const [grasa, setGrasa] = useState('')
-  const [vigenciaDesde, setVigenciaDesde] = useState('')
-  const [vigenciaHasta, setVigenciaHasta] = useState('')
+  const isEditing = !!initialData && !!actualizarPlanAction
+
+  const [nombre, setNombre] = useState(initialData?.nombre ?? '')
+  const [objetivo, setObjetivo] = useState(initialData?.objetivo ?? '')
+  const [kcal, setKcal] = useState(
+    initialData?.kcalObjetivo != null ? String(initialData.kcalObjetivo) : '',
+  )
+  const [proteina, setProteina] = useState(
+    initialData?.proteinaG != null ? String(initialData.proteinaG) : '',
+  )
+  const [carbos, setCarbos] = useState(
+    initialData?.carbosG != null ? String(initialData.carbosG) : '',
+  )
+  const [grasa, setGrasa] = useState(
+    initialData?.grasaG != null ? String(initialData.grasaG) : '',
+  )
+  const [vigenciaDesde, setVigenciaDesde] = useState(initialData?.vigenciaDesde ?? '')
+  const [vigenciaHasta, setVigenciaHasta] = useState(initialData?.vigenciaHasta ?? '')
   const [dias, setDias] = useState<DiaForm[]>(
-    Array.from({ length: 7 }, () => crearDiaInicial()),
+    initialData
+      ? buildDiasFromInitial(initialData)
+      : Array.from({ length: 7 }, () => crearDiaInicial()),
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -152,39 +242,56 @@ export default function NutricionBuilderView({
       }
     }
 
+    const diasPayload = diasActivos.map((d) => ({
+      dia: DIAS_ENUM[d.idx],
+      nombre: DIAS_FULL[d.idx],
+      comidas: d.comidas.map((comida, cIdx) => ({
+        nombre: comida.nombre,
+        hora: comida.hora,
+        orden: cIdx,
+        alimentos: comida.alimentos.map((al, alIdx) => ({
+          nombre: al.nombre,
+          cantidad: al.cantidad ? parseFloat(al.cantidad) : 0,
+          unidad: al.unidad,
+          kcal: al.kcal ? parseFloat(al.kcal) : null,
+          proteinaG: al.proteina ? parseFloat(al.proteina) : null,
+          carbosG: al.carbos ? parseFloat(al.carbos) : null,
+          grasaG: al.grasa ? parseFloat(al.grasa) : null,
+          orden: alIdx,
+        })),
+      })),
+    }))
+
     setSaving(true)
     startTransition(async () => {
       try {
-        await crearPlanAction({
-          alumnoId,
-          nombre,
-          objetivo,
-          kcalObjetivo: kcal ? parseInt(kcal) : null,
-          proteinaG: proteina ? parseFloat(proteina) : null,
-          carbosG: carbos ? parseFloat(carbos) : null,
-          grasaG: grasa ? parseFloat(grasa) : null,
-          vigenciaDesde,
-          vigenciaHasta,
-          dias: diasActivos.map((d) => ({
-            dia: DIAS_ENUM[d.idx],
-            nombre: DIAS_FULL[d.idx],
-            comidas: d.comidas.map((comida, cIdx) => ({
-              nombre: comida.nombre,
-              hora: comida.hora,
-              orden: cIdx,
-              alimentos: comida.alimentos.map((al, alIdx) => ({
-                nombre: al.nombre,
-                cantidad: al.cantidad ? parseFloat(al.cantidad) : 0,
-                unidad: al.unidad,
-                kcal: al.kcal ? parseFloat(al.kcal) : null,
-                proteinaG: al.proteina ? parseFloat(al.proteina) : null,
-                carbosG: al.carbos ? parseFloat(al.carbos) : null,
-                grasaG: al.grasa ? parseFloat(al.grasa) : null,
-                orden: alIdx,
-              })),
-            })),
-          })),
-        })
+        if (isEditing) {
+          await actualizarPlanAction({
+            planId: initialData.id,
+            nombre,
+            objetivo,
+            kcalObjetivo: kcal ? parseInt(kcal) : null,
+            proteinaG: proteina ? parseFloat(proteina) : null,
+            carbosG: carbos ? parseFloat(carbos) : null,
+            grasaG: grasa ? parseFloat(grasa) : null,
+            vigenciaDesde,
+            vigenciaHasta,
+            dias: diasPayload,
+          })
+        } else {
+          await crearPlanAction({
+            alumnoId,
+            nombre,
+            objetivo,
+            kcalObjetivo: kcal ? parseInt(kcal) : null,
+            proteinaG: proteina ? parseFloat(proteina) : null,
+            carbosG: carbos ? parseFloat(carbos) : null,
+            grasaG: grasa ? parseFloat(grasa) : null,
+            vigenciaDesde,
+            vigenciaHasta,
+            dias: diasPayload,
+          })
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Error al guardar el plan')
         setSaving(false)
@@ -328,7 +435,7 @@ export default function NutricionBuilderView({
         className="text-2xl font-bold"
         style={{ fontFamily: 'var(--font-heading)', color: '#ffffff' }}
       >
-        Nuevo Plan Nutricional para{' '}
+        {isEditing ? 'Editar Plan Nutricional' : 'Nuevo Plan Nutricional'} para{' '}
         <span style={{ color: 'var(--primary)' }}>{alumnoNombre}</span>
       </h2>
 
@@ -844,7 +951,7 @@ export default function NutricionBuilderView({
           cursor: saving || isPending ? 'not-allowed' : 'pointer',
         }}
       >
-        {saving || isPending ? 'Guardando...' : 'Guardar Plan'}
+        {saving || isPending ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Guardar Plan'}
       </button>
     </div>
   )
