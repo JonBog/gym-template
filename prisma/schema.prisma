@@ -1,13 +1,280 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GYM — identidad del tenant (una sola fila por deployment)
+// ─────────────────────────────────────────────────────────────────────────────
+model Gym {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  nombre    String
+  ciudad    String?
+  pais      String?
+  whatsapp  String?
+  instagram String?
+  facebook  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────────────────────────────────────
+enum Role {
+  ALUMNO
+  ENTRENADOR
+  ADMIN_GYM
+}
+
+model User {
+  id              String    @id @default(cuid())
+  gymId           String
+  gym             Gym       @relation(fields: [gymId], references: [id])
+  nombre          String
+  apellido        String
+  email           String    @unique
+  emailVerified   DateTime?
+  passwordHash    String?
+  rol             Role      @default(ALUMNO)
+  avatarUrl       String?
+  telefono        String?
+  fechaNacimiento DateTime?
+  activo          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  entrenadorDe     AsignacionAlumno[] @relation("Entrenador")
+  alumnoAsignado   AsignacionAlumno[] @relation("Alumno")
+  rutinas          Rutina[]           @relation("AlumnoRutina")
+  rutinasCreadaas  Rutina[]           @relation("EntrenadorRutina")
+  planesNutricion  PlanNutricional[]  @relation("AlumnoPlan")
+  planesCreadosPor PlanNutricional[]  @relation("EntrenadorPlan")
+  progresos        Progreso[]
+  completados      EjercicioCompletado[]
+  accounts         Account[]
+  sessions         Session[]
+
+  @@index([gymId, rol])
+}
+
+model AsignacionAlumno {
+  id           String   @id @default(cuid())
+  entrenadorId String
+  alumnoId     String
+  entrenador   User     @relation("Entrenador", fields: [entrenadorId], references: [id])
+  alumno       User     @relation("Alumno", fields: [alumnoId], references: [id])
+  asignadoEn   DateTime @default(now())
+  activa       Boolean  @default(true)
+
+  @@unique([entrenadorId, alumnoId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RUTINAS
+// ─────────────────────────────────────────────────────────────────────────────
+enum DiaSemana {
+  LUNES
+  MARTES
+  MIERCOLES
+  JUEVES
+  VIERNES
+  SABADO
+  DOMINGO
+}
+
+model Rutina {
+  id            String    @id @default(cuid())
+  alumnoId      String
+  alumno        User      @relation("AlumnoRutina", fields: [alumnoId], references: [id])
+  entrenadorId  String
+  entrenador    User      @relation("EntrenadorRutina", fields: [entrenadorId], references: [id])
+  nombre        String
+  descripcion   String?
+  activa        Boolean   @default(true)
+  vigenciaDesde DateTime  @default(now())
+  vigenciaHasta DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  dias RutinaDia[]
+}
+
+model RutinaDia {
+  id       String    @id @default(cuid())
+  rutinaId String
+  rutina   Rutina    @relation(fields: [rutinaId], references: [id], onDelete: Cascade)
+  dia      DiaSemana
+  nombre   String?
+  tipo     String?
+  orden    Int       @default(0)
+
+  ejercicios Ejercicio[]
+
+  @@unique([rutinaId, dia])
+}
+
+model Ejercicio {
+  id          String    @id @default(cuid())
+  rutinaDiaId String
+  rutinaDia   RutinaDia @relation(fields: [rutinaDiaId], references: [id], onDelete: Cascade)
+  nombre      String
+  descripcion String?
+  videoUrl    String?
+  orden       Int       @default(0)
+
+  series      Int?
+  repsMin     Int?
+  repsMax     Int?
+  pesoKg      Float?
+  pesoNota    String?
+  descansoSeg Int?
+  duracionMin Float?
+  distanciaKm Float?
+  notas       String?
+
+  completados EjercicioCompletado[]
+}
+
+model EjercicioCompletado {
+  id           String    @id @default(cuid())
+  ejercicioId  String
+  ejercicio    Ejercicio @relation(fields: [ejercicioId], references: [id])
+  alumnoId     String
+  alumno       User      @relation(fields: [alumnoId], references: [id])
+  fecha        DateTime  @default(now())
+  seriesHechas Int?
+  repsHechas   Int?
+  pesoUsadoKg  Float?
+  notas        String?
+
+  @@unique([ejercicioId, alumnoId, fecha])
+  @@index([alumnoId, fecha])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NUTRICIÓN
+// ─────────────────────────────────────────────────────────────────────────────
+model PlanNutricional {
+  id            String    @id @default(cuid())
+  alumnoId      String
+  alumno        User      @relation("AlumnoPlan", fields: [alumnoId], references: [id])
+  entrenadorId  String
+  entrenador    User      @relation("EntrenadorPlan", fields: [entrenadorId], references: [id])
+  nombre        String
+  objetivo      String?
+  activo        Boolean   @default(true)
+  kcalObjetivo  Int?
+  proteinaG     Float?
+  carbosG       Float?
+  grasaG        Float?
+  vigenciaDesde DateTime  @default(now())
+  vigenciaHasta DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  dias PlanNutricionDia[]
+}
+
+model PlanNutricionDia {
+  id     String          @id @default(cuid())
+  planId String
+  plan   PlanNutricional @relation(fields: [planId], references: [id], onDelete: Cascade)
+  dia    DiaSemana
+  nombre String?
+
+  comidas Comida[]
+
+  @@unique([planId, dia])
+}
+
+model Comida {
+  id     String           @id @default(cuid())
+  diaId  String
+  dia    PlanNutricionDia @relation(fields: [diaId], references: [id], onDelete: Cascade)
+  nombre String
+  hora   String?
+  orden  Int              @default(0)
+
+  alimentos Alimento[]
+}
+
+model Alimento {
+  id        String @id @default(cuid())
+  comidaId  String
+  comida    Comida @relation(fields: [comidaId], references: [id], onDelete: Cascade)
+  nombre    String
+  cantidad  Float
+  unidad    String
+  kcal      Float?
+  proteinaG Float?
+  carbosG   Float?
+  grasaG    Float?
+  notas     String?
+  orden     Int    @default(0)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROGRESO
+// ─────────────────────────────────────────────────────────────────────────────
+model Progreso {
+  id             String   @id @default(cuid())
+  alumnoId       String
+  alumno         User     @relation(fields: [alumnoId], references: [id])
+  fecha          DateTime @default(now())
+  pesoKg         Float?
+  grasaCorporal  Float?
+  masaMuscularKg Float?
+  cinturaCm      Float?
+  caderaCm       Float?
+  pechoCm        Float?
+  brazoCm        Float?
+  notas          String?
+
+  @@index([alumnoId, fecha])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEXTAUTH — tablas requeridas por Prisma Adapter
+// ─────────────────────────────────────────────────────────────────────────────
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
