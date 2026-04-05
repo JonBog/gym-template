@@ -9,6 +9,9 @@ vi.mock('@/lib/prisma', () => ({
       updateMany: vi.fn(),
       create: vi.fn(),
     },
+    asignacionAlumno: {
+      findFirst: vi.fn(),
+    },
   },
 }))
 vi.mock('next/navigation', () => ({
@@ -88,8 +91,15 @@ describe('crearPlanNutricional', () => {
       await expect(crearPlanNutricional(validInput)).rejects.toThrow('NEXT_REDIRECT')
     })
 
-    it('allows ADMIN_GYM role', async () => {
+    it('rejects ADMIN_GYM without active assignment', async () => {
       mockAuth.mockResolvedValue({ user: { id: 'u1', rol: 'ADMIN_GYM', gymId: 'gym-1' } } as never)
+      vi.mocked(prisma.asignacionAlumno.findFirst).mockResolvedValue(null)
+      await expect(crearPlanNutricional(validInput)).rejects.toThrow('No tenés permisos para crear planes nutricionales para este alumno')
+    })
+
+    it('allows ADMIN_GYM with active assignment', async () => {
+      mockAuth.mockResolvedValue({ user: { id: 'admin-1', rol: 'ADMIN_GYM', gymId: 'gym-1' } } as never)
+      vi.mocked(prisma.asignacionAlumno.findFirst).mockResolvedValue({ id: 'asig-1' } as never)
       await expect(crearPlanNutricional(validInput)).rejects.toThrow('NEXT_REDIRECT')
     })
   })

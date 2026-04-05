@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ReactNode } from 'react'
 import { AlumnoData } from '@/lib/queries/alumno'
 
 function formatDate(date: Date): string {
@@ -32,9 +33,13 @@ type Props = {
   data: AlumnoData
   basePath: string
   alumnoId: string
+  showCreateButtons?: boolean
+  createBasePath?: string
+  asignacionSlot?: ReactNode
 }
 
-export default function AlumnoProfileView({ data, basePath, alumnoId }: Props) {
+export default function AlumnoProfileView({ data, basePath, alumnoId, showCreateButtons = true, createBasePath, asignacionSlot }: Props) {
+  const effectiveCreateBasePath = createBasePath ?? basePath
   const { alumno, rutinaActiva, planActivo, progresos } = data
 
   const rutina = rutinaActiva
@@ -106,6 +111,9 @@ export default function AlumnoProfileView({ data, basePath, alumnoId }: Props) {
         </svg>
         Volver a alumnos
       </Link>
+
+      {/* Slot para asignacion de entrenador (solo visible desde admin) */}
+      {asignacionSlot}
 
       {/* Header con info del alumno */}
       <div
@@ -184,30 +192,32 @@ export default function AlumnoProfileView({ data, basePath, alumnoId }: Props) {
             >
               Rutina Actual
             </h3>
-            <Link
-              href={`${basePath}/${alumnoId}/rutinas/nueva`}
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors"
-              style={{
-                background: 'var(--primary)',
-                color: '#0a0a0a',
-                fontFamily: 'var(--font-heading)',
-              }}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {showCreateButtons && (
+              <Link
+                href={`${effectiveCreateBasePath}/${alumnoId}/rutinas/nueva`}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors"
+                style={{
+                  background: 'var(--primary)',
+                  color: '#0a0a0a',
+                  fontFamily: 'var(--font-heading)',
+                }}
               >
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Nueva Rutina
-            </Link>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Nueva Rutina
+              </Link>
+            )}
           </div>
 
           <div
@@ -241,30 +251,32 @@ export default function AlumnoProfileView({ data, basePath, alumnoId }: Props) {
             >
               Plan Nutricional
             </h3>
-            <Link
-              href={`${basePath}/${alumnoId}/nutricion/nuevo`}
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors"
-              style={{
-                background: 'var(--primary)',
-                color: '#0a0a0a',
-                fontFamily: 'var(--font-heading)',
-              }}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {showCreateButtons && (
+              <Link
+                href={`${effectiveCreateBasePath}/${alumnoId}/nutricion/nuevo`}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors"
+                style={{
+                  background: 'var(--primary)',
+                  color: '#0a0a0a',
+                  fontFamily: 'var(--font-heading)',
+                }}
               >
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Nuevo Plan
-            </Link>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Nuevo Plan
+              </Link>
+            )}
           </div>
 
           <div

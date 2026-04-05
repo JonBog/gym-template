@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { toggleEntrenadorActivo } from './actions'
 
 type Entrenador = {
   id: string
@@ -19,6 +20,16 @@ type Filtro = 'todos' | 'activos' | 'inactivos'
 export default function EntrenadoresGrid({ entrenadores }: { entrenadores: Entrenador[] }) {
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [busqueda, setBusqueda] = useState('')
+  const [pending, startTransition] = useTransition()
+  const [pendingId, setPendingId] = useState<string | null>(null)
+
+  function handleToggle(id: string) {
+    setPendingId(id)
+    startTransition(async () => {
+      await toggleEntrenadorActivo(id)
+      setPendingId(null)
+    })
+  }
 
   const filtrados = entrenadores.filter((ent) => {
     if (filtro === 'activos' && !ent.activo) return false
@@ -132,14 +143,22 @@ export default function EntrenadoresGrid({ entrenadores }: { entrenadores: Entre
           {filtrados.map((ent) => (
             <div
               key={ent.id}
-              className="rounded-2xl p-5 flex flex-col gap-4"
-              style={{ background: 'var(--gym-surface)', border: '1px solid rgba(255,255,255,0.08)' }}
+              className="rounded-2xl p-5 flex flex-col gap-4 transition-opacity"
+              style={{
+                background: 'var(--gym-surface)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                opacity: ent.activo ? 1 : 0.55,
+              }}
             >
               {/* Avatar + info */}
               <div className="flex items-start gap-3">
                 <div
                   className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold flex-shrink-0"
-                  style={{ background: 'rgba(255,170,25,0.15)', color: 'var(--primary)', fontFamily: 'var(--font-heading)' }}
+                  style={{
+                    background: ent.activo ? 'rgba(255,170,25,0.15)' : 'rgba(255,255,255,0.06)',
+                    color: ent.activo ? 'var(--primary)' : 'var(--gym-muted)',
+                    fontFamily: 'var(--font-heading)',
+                  }}
                 >
                   {ent.nombre[0]}{ent.apellido[0]}
                 </div>
@@ -176,15 +195,20 @@ export default function EntrenadoresGrid({ entrenadores }: { entrenadores: Entre
                 </p>
               </div>
 
-              {/* Placeholder para activar/desactivar */}
+              {/* Activar / Desactivar */}
               <button
-                className="w-full flex items-center justify-center rounded-xl px-4 py-2.5 text-xs font-bold transition-colors"
+                onClick={() => handleToggle(ent.id)}
+                disabled={pending && pendingId === ent.id}
+                className="w-full flex items-center justify-center rounded-xl px-4 py-2.5 text-xs font-bold transition-colors disabled:cursor-not-allowed"
                 style={{
-                  background: ent.activo ? 'var(--gym-surface-alt)' : 'rgba(34,197,94,0.12)',
-                  color: ent.activo ? '#ffffff' : '#22c55e',
+                  background: ent.activo ? 'rgba(239,68,68,0.10)' : 'rgba(34,197,94,0.12)',
+                  color: ent.activo ? '#ef4444' : '#22c55e',
+                  opacity: pending && pendingId === ent.id ? 0.6 : 1,
                 }}
               >
-                {ent.activo ? 'Desactivar' : 'Activar'}
+                {pending && pendingId === ent.id
+                  ? (ent.activo ? 'Desactivando...' : 'Activando...')
+                  : (ent.activo ? 'Desactivar' : 'Activar')}
               </button>
             </div>
           ))}

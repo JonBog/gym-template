@@ -51,7 +51,17 @@ export async function crearRutina(input: RutinaInput) {
     throw new Error('No autenticado')
   }
 
-  if (session.user.rol !== 'ENTRENADOR' && session.user.rol !== 'ADMIN_GYM') {
+  if (session.user.rol === 'ENTRENADOR') {
+    // OK — entrenadores siempre pueden crear
+  } else if (session.user.rol === 'ADMIN_GYM') {
+    // Admin puede crear SOLO si está asignado como entrenador de este alumno
+    const asignacion = await prisma.asignacionAlumno.findFirst({
+      where: { entrenadorId: session.user.id, alumnoId: input.alumnoId, activa: true },
+    })
+    if (!asignacion) {
+      throw new Error('No tenés permisos para crear rutinas para este alumno')
+    }
+  } else {
     throw new Error('No tenés permisos para crear rutinas')
   }
 
