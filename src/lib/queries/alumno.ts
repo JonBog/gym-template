@@ -23,7 +23,24 @@ const rutinaInclude = {
 
 type AlumnoRow = Prisma.UserGetPayload<{ select: typeof alumnoSelect }>
 type RutinaActiva = Prisma.RutinaGetPayload<{ include: typeof rutinaInclude }> | null
-type PlanActivo = Prisma.PlanNutricionalGetPayload<Record<string, never>> | null
+const planActivoSelect = {
+  id: true,
+  nombre: true,
+  objetivo: true,
+  activo: true,
+  kcalObjetivo: true,
+  proteinaG: true,
+  carbosG: true,
+  grasaG: true,
+  vigenciaDesde: true,
+  vigenciaHasta: true,
+  createdAt: true,
+  updatedAt: true,
+  alumnoId: true,
+  entrenadorId: true,
+} satisfies Prisma.PlanNutricionalSelect
+
+type PlanActivo = Prisma.PlanNutricionalGetPayload<{ select: typeof planActivoSelect }> | null
 type ProgresoRow = Prisma.ProgresoGetPayload<Record<string, never>>
 
 export type AlumnoData = {
@@ -50,6 +67,7 @@ export async function getAlumnoData(alumnoId: string): Promise<AlumnoData | null
   const planActivo = await prisma.planNutricional.findFirst({
     where: { alumnoId, activo: true },
     orderBy: { createdAt: 'desc' },
+    select: planActivoSelect,
   })
 
   const progresos = await prisma.progreso.findMany({

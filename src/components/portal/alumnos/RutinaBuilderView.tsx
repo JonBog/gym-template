@@ -50,11 +50,47 @@ export type RutinaInput = {
   redirectTo?: string
 }
 
+export type RutinaActualizarInput = {
+  rutinaId: string
+  nombre: string
+  descripcion: string
+  vigenciaDesde: string
+  vigenciaHasta: string
+  dias: DiaInput[]
+  redirectTo?: string
+}
+
+export type RutinaInitialData = {
+  id: string
+  nombre: string
+  descripcion: string
+  vigenciaDesde: string
+  vigenciaHasta: string
+  dias: {
+    dia: string
+    nombre: string
+    tipo: string
+    ejercicios: {
+      nombre: string
+      series: number | null
+      repsMin: number | null
+      repsMax: number | null
+      pesoKg: number | null
+      pesoNota: string
+      descansoSeg: number | null
+      videoUrl: string
+      orden: number
+    }[]
+  }[]
+}
+
 type Props = {
   alumnoId: string
   alumnoNombre: string
   basePath: string
-  crearRutinaAction: (input: RutinaInput) => Promise<void>
+  crearRutinaAction?: (input: RutinaInput) => Promise<void>
+  actualizarRutinaAction?: (input: RutinaActualizarInput) => Promise<void>
+  initialData?: RutinaInitialData
 }
 
 const DIAS = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'] as const
@@ -106,18 +142,49 @@ const inputStyle = {
   border: '1px solid rgba(255,255,255,0.08)',
 }
 
+function buildDiasFromInitialData(initialData: RutinaInitialData): DiaForm[] {
+  const base = Array.from({ length: 7 }, () => crearDiaInicial())
+  for (const diaData of initialData.dias) {
+    const idx = DIAS_ENUM.indexOf(diaData.dia as typeof DIAS_ENUM[number])
+    if (idx === -1) continue
+    base[idx] = {
+      activo: true,
+      nombre: diaData.nombre ?? '',
+      tipo: diaData.tipo ?? 'Fuerza',
+      ejercicios: diaData.ejercicios
+        .slice()
+        .sort((a, b) => a.orden - b.orden)
+        .map((ej) => ({
+          id: crypto.randomUUID(),
+          nombre: ej.nombre,
+          series: ej.series != null ? String(ej.series) : '',
+          repsMin: ej.repsMin != null ? String(ej.repsMin) : '',
+          repsMax: ej.repsMax != null ? String(ej.repsMax) : '',
+          pesoNota: ej.pesoNota ?? '',
+          descansoSeg: ej.descansoSeg != null ? String(ej.descansoSeg) : '',
+          videoUrl: ej.videoUrl ?? '',
+        })),
+    }
+  }
+  return base
+}
+
 export function RutinaBuilderView({
   alumnoId,
   alumnoNombre,
   basePath,
   crearRutinaAction,
+  actualizarRutinaAction,
+  initialData,
 }: Props) {
-  const [nombre, setNombre] = useState('')
-  const [descripcion, setDescripcion] = useState('')
-  const [vigenciaDesde, setVigenciaDesde] = useState('')
-  const [vigenciaHasta, setVigenciaHasta] = useState('')
+  const isEditing = Boolean(initialData)
+
+  const [nombre, setNombre] = useState(initialData?.nombre ?? '')
+  const [descripcion, setDescripcion] = useState(initialData?.descripcion ?? '')
+  const [vigenciaDesde, setVigenciaDesde] = useState(initialData?.vigenciaDesde ?? '')
+  const [vigenciaHasta, setVigenciaHasta] = useState(initialData?.vigenciaHasta ?? '')
   const [dias, setDias] = useState<DiaForm[]>(
-    Array.from({ length: 7 }, () => crearDiaInicial()),
+    initialData ? buildDiasFromInitialData(initialData) : Array.from({ length: 7 }, () => crearDiaInicial()),
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -148,32 +215,45 @@ export function RutinaBuilderView({
       }
     }
 
+    const diasPayload = diasActivos.map((d) => ({
+      dia: DIAS_ENUM[d.idx],
+      nombre: d.nombre,
+      tipo: d.tipo,
+      ejercicios: d.ejercicios.map((ej, ejIdx) => ({
+        nombre: ej.nombre,
+        series: ej.series ? parseInt(ej.series) : null,
+        repsMin: ej.repsMin ? parseInt(ej.repsMin) : null,
+        repsMax: ej.repsMax ? parseInt(ej.repsMax) : null,
+        pesoKg: null,
+        pesoNota: ej.pesoNota,
+        descansoSeg: ej.descansoSeg ? parseInt(ej.descansoSeg) : null,
+        videoUrl: ej.videoUrl,
+        orden: ejIdx,
+      })),
+    }))
+
     setSaving(true)
     startTransition(async () => {
       try {
-        await crearRutinaAction({
-          alumnoId,
-          nombre,
-          descripcion,
-          vigenciaDesde,
-          vigenciaHasta,
-          dias: diasActivos.map((d) => ({
-            dia: DIAS_ENUM[d.idx],
-            nombre: d.nombre,
-            tipo: d.tipo,
-            ejercicios: d.ejercicios.map((ej, ejIdx) => ({
-              nombre: ej.nombre,
-              series: ej.series ? parseInt(ej.series) : null,
-              repsMin: ej.repsMin ? parseInt(ej.repsMin) : null,
-              repsMax: ej.repsMax ? parseInt(ej.repsMax) : null,
-              pesoKg: null,
-              pesoNota: ej.pesoNota,
-              descansoSeg: ej.descansoSeg ? parseInt(ej.descansoSeg) : null,
-              videoUrl: ej.videoUrl,
-              orden: ejIdx,
-            })),
-          })),
-        })
+        if (isEditing && actualizarRutinaAction && initialData) {
+          await actualizarRutinaAction({
+            rutinaId: initialData.id,
+            nombre,
+            descripcion,
+            vigenciaDesde,
+            vigenciaHasta,
+            dias: diasPayload,
+          })
+        } else if (crearRutinaAction) {
+          await crearRutinaAction({
+            alumnoId,
+            nombre,
+            descripcion,
+            vigenciaDesde,
+            vigenciaHasta,
+            dias: diasPayload,
+          })
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Error al guardar la rutina')
         setSaving(false)
@@ -268,7 +348,7 @@ export function RutinaBuilderView({
         className="text-2xl font-bold"
         style={{ fontFamily: 'var(--font-heading)', color: '#ffffff' }}
       >
-        Nueva Rutina para{' '}
+        {isEditing ? 'Editar Rutina' : 'Nueva Rutina'} para{' '}
         <span style={{ color: 'var(--primary)' }}>{alumnoNombre}</span>
       </h2>
 
@@ -692,7 +772,7 @@ export function RutinaBuilderView({
           cursor: saving || isPending ? 'not-allowed' : 'pointer',
         }}
       >
-        {saving || isPending ? 'Guardando...' : 'Guardar Rutina'}
+        {saving || isPending ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Guardar Rutina'}
       </button>
     </div>
   )
